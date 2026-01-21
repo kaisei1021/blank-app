@@ -73,7 +73,7 @@ if len(st.session_state.used) == TOTAL:
     st.stop()
 
 # --------------------
-# 現在の問題
+# 問題表示
 # --------------------
 row = df.iloc[st.session_state.current]
 
@@ -83,11 +83,11 @@ st.write(f"## {row['word']}")
 answer = st.text_input("日本語の意味を入力してください")
 
 # --------------------
-# 正規化関数（ゆれ対策）
+# 正規化関数（入力ゆれ対策）
 # --------------------
 def normalize(text):
     text = text.strip()
-    text = re.sub(r"[○◎●「」『』]", "", text)  # 記号除去
+    text = re.sub(r"[○◎●「」『』\s]", "", text)
     return text
 
 # --------------------
@@ -110,7 +110,7 @@ if st.button("次の単語"):
     st.session_state.used.append(st.session_state.current)
     remaining = list(set(range(TOTAL)) - set(st.session_state.used))
     st.session_state.current = random.choice(remaining)
-    st.experimental_rerun()
+    st.rerun()
 
 # --------------------
 # スコア表示
