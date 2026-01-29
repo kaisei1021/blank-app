@@ -4,138 +4,122 @@ import random
 import re
 from supabase import create_client, Client
 
-# --------------------
-# 1. Supabase接続設定 (注意1: Secretsを利用)
-# --------------------
-# StreamlitのSecretsから設定を読み込みます
-try:
-    url: str = st.secrets["SUPABASE_URL"]
-    key: str = st.secrets["SUPABASE_KEY"]
-    supabase: Client = create_client(url, key)
-except Exception as e:
-    st.error("SupabaseのURLまたはKeyが設定されていません。Secretsを確認してください。")
-    st.stop()
+# --- Supabase接続 ---
+url: str = st.secrets["SUPABASE_URL"]
+key: str = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(url, key)
 
-# --------------------
-# 2. ページ設定
-# --------------------
-st.set_page_config(page_title="英単語学習アプリ Pro", layout="centered")
-st.title("英単語学習アプリ（Supabase連携版）")
-
-# --------------------
-# 3. 英単語リスト・データ準備 (変更なし)
-# --------------------
-base_words = [
-    ("apple", "りんご"), ("book", "本"), ("cat", "猫"), ("dog", "犬"), ("study", "勉強する"),
-    ("important", "重要な"), ("language", "言語"), ("school", "学校"), ("student", "学生"),
-    ("teacher", "先生"), ("music", "音楽"), ("movie", "映画"), ("sports", "スポーツ"),
-    ("friend", "友達"), ("family", "家族"), ("travel", "旅行する"), ("country", "国"),
-    ("city", "都市"), ("food", "食べ物"), ("water", "水"), ("time", "時間"),
-    ("money", "お金"), ("computer", "コンピュータ"), ("internet", "インターネット"),
-    ("science", "科学"), ("history", "歴史"), ("future", "未来"), ("question", "質問"),
-    ("answer", "答え"), ("problem", "問題")
-]
+# --- データ準備 ---
+base_words = [("apple", "りんご"), ("book", "本"), ("cat", "猫"), ("dog", "犬"), ("study", "勉強する"),
+              ("important", "重要な"), ("language", "言語"), ("school", "学校"), ("student", "学生"),
+              ("teacher", "先生"), ("music", "音楽"), ("movie", "映画"), ("sports", "スポーツ"),
+              ("friend", "友達"), ("family", "家族"), ("travel", "旅行する"), ("country", "国"),
+              ("city", "都市"), ("food", "食べ物"), ("water", "水"), ("time", "時間"),
+              ("money", "お金"), ("computer", "コンピュータ"), ("internet", "インターネット"),
+              ("science", "科学"), ("history", "歴史"), ("future", "未来"), ("question", "質問"),
+              ("answer", "答え"), ("problem", "問題")]
 
 words = []
 for i in range(300):
     w, m = base_words[i % len(base_words)]
-    words.append({"word": w, "meaning": m})
-
+    words.append({"id": i, "word": w, "meaning": m})
 df = pd.DataFrame(words)
-TOTAL = len(df)
 
-# --------------------
-# 4. データベース操作関数 (改良ポイント)
-# --------------------
-def save_score_to_supabase(score, progress):
-    """学習結果をSupabaseに保存する"""
-    data = {
-        "score": score, 
-        "progress": progress, 
-        "user_name": "User1" # 必要に応じて変更
-    }
-    supabase.table("learning_logs").insert(data).execute()
-
-def get_history_from_supabase():
-    """過去の学習履歴を最新5件取得する"""
-    response = supabase.table("learning_logs").select("*").order("created_at", desc=True).limit(5).execute()
-    return response.data
-
-# --------------------
-# 5. セッション初期化
-# --------------------
+# --- セッション初期化 ---
+if "mode" not in st.session_state:
+    st.session_state.mode = "normal"  # "normal" or "bookmark_review"
 if "used" not in st.session_state:
     st.session_state.used = []
     st.session_state.score = 0
-    st.session_state.current = random.randint(0, TOTAL - 1)
+    st.session_state.current_idx = random.randint(0, len(df) - 1)
+    st.session_state.options = []
 
-# --------------------
-# 6. 全問終了時の処理
-# --------------------
-if len(st.session_state.used) == TOTAL:
-    st.success("🎉 300問すべて終了しました！")
-    st.write(f"最終スコア：{st.session_state.score} / {TOTAL}")
-    
-    # データを保存するボタン
-    if st.button("学習結果をデータベースに保存"):
-        save_score_to_supabase(st.session_state.score, len(st.session_state.used))
-        st.toast("Supabaseに保存しました！")
-    
-    if st.button("最初からやり直す"):
+# --- データベース関数 ---
+def add_bookmark(word_id):
+    supabase.table("bookmarks").insert({"word_id": word_id}).execute()
+
+def get_bookmarks():
+    res = supabase.table("bookmarks").select("word_id").execute()
+    return [item["word_id"] for item in res.data]
+
+def clear_bookmarks():
+    supabase.table("bookmarks").delete().neq("id", -1).execute()
+
+# --- 選択肢の生成 ---
+def generate_options(correct_meaning):
+    options = [correct_meaning]
+    others = [m for w, m in base_words if m != correct_meaning]
+    options.extend(random.sample(list(set(others)), 3))
+    random.shuffle(options)
+    return options
+
+# --- メインUI ---
+st.title("英単語学習 Pro (選択式+復習機能)")
+
+# サイドバーでモード切り替え
+st.sidebar.title("メニュー")
+if st.sidebar.button("通常モード開始"):
+    st.session_state.mode = "normal"
+    st.session_state.used = []
+    st.rerun()
+
+bookmarked_ids = get_bookmarks()
+if st.sidebar.button(f"ブックマーク復習 ({len(bookmarked_ids)}件)"):
+    if len(bookmarked_ids) > 0:
+        st.session_state.mode = "bookmark_review"
         st.session_state.used = []
-        st.session_state.score = 0
+        st.session_state.current_idx = random.choice(bookmarked_ids)
         st.rerun()
-    st.stop()
+    else:
+        st.sidebar.warning("ブックマークがありません")
 
-# --------------------
-# 7. 問題表示・解答ロジック
-# --------------------
-row = df.iloc[st.session_state.current]
-st.write(f"### 問題 {len(st.session_state.used) + 1} / {TOTAL}")
-st.write(f"## {row['word']}")
+if st.sidebar.button("ブックマークを全削除"):
+    clear_bookmarks()
+    st.rerun()
 
-answer = st.text_input("日本語の意味を入力してください", key="ans_input")
+# --- 問題ロジック ---
+current_word = df.iloc[st.session_state.current_idx]
 
-def normalize(text):
-    text = text.strip()
-    text = re.sub(r"[○◎●「」『』\s]", "", text)
-    return text
+# 選択肢が未生成なら生成
+if not st.session_state.options:
+    st.session_state.options = generate_options(current_word["meaning"])
 
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("答え合わせ"):
-        user = normalize(answer)
-        correct = normalize(row["meaning"])
-        if user == correct:
+st.subheader(f"【{ '復習' if st.session_state.mode == 'bookmark_review' else '通常' }モード】")
+st.write(f"## {current_word['word']}")
+
+# 選択肢ボタン
+for opt in st.session_state.options:
+    if st.button(opt, use_container_width=True):
+        if opt == current_word["meaning"]:
             st.success("正解！")
             st.session_state.score += 1
         else:
-            st.error(f"不正解… 正解は「{row['meaning']}」です")
+            st.error(f"不正解... 正解は「{current_word['meaning']}」でした")
+
+# アクションボタン
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("🌟 ブックマークに追加"):
+        add_bookmark(int(st.session_state.current_idx))
+        st.toast("ブックマークに保存しました")
 
 with col2:
-    if st.button("次の単語"):
-        st.session_state.used.append(st.session_state.current)
-        remaining = list(set(range(TOTAL)) - set(st.session_state.used))
+    if st.button("次の問題へ ➔"):
+        st.session_state.used.append(st.session_state.current_idx)
+        
+        # 次の問題の選定
+        if st.session_state.mode == "normal":
+            remaining = list(set(range(len(df))) - set(st.session_state.used))
+        else:
+            remaining = list(set(bookmarked_ids) - set(st.session_state.used))
+            
         if remaining:
-            st.session_state.current = random.choice(remaining)
+            st.session_state.current_idx = random.choice(remaining)
+            st.session_state.options = [] # 選択肢をリセット
             st.rerun()
+        else:
+            st.balloons()
+            st.success("全ての問を終了しました！")
 
-# --------------------
-# 8. 履歴表示 (注意3: データの永続化を可視化)
-# --------------------
-st.write("---")
-st.subheader("📊 過去の学習履歴 (Supabaseから取得)")
-
-# 履歴データを取得して表示
-history_data = get_history_from_supabase()
-if history_data:
-    # データを表形式で表示
-    h_df = pd.DataFrame(history_data)
-    # 列名の整理と時間のフォーマット調整
-    h_df = h_df[['created_at', 'score', 'progress']]
-    h_df.columns = ['学習日時', '正解数', '解答数']
-    st.dataframe(h_df, use_container_width=True)
-else:
-    st.info("まだ保存された履歴はありません。")
-
-st.write(f"現在のセッション正解数：{st.session_state.score}")
+st.divider()
+st.write(f"現在のスコア: {st.session_state.score}")
