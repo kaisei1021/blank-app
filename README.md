@@ -7,7 +7,7 @@
 ## 🔗 URL
 
 このURLで試すことができます（スリープ状態のときは青色の起動ボタンを押してください）：  
-**https://your-app-url.streamlit.app/** *(※自分のStreamlit CloudのURLに書き換えてください)*
+https://blank-app-e44ycfxrbgq.streamlit.app/
 
 ---
 
@@ -55,13 +55,12 @@ streamlit run streamlit_app.py
 
     英単語データ: 内部のDataFrameで300問の単語を動的に管理。
 
-### 💻 使用技術
+###💻 使用技術
 
-    Frontend/UI: Streamlit
+* **Frontend/UI**: [Streamlit](https://streamlit.io/)
+* **Database/Backend**: [Supabase](https://supabase.com/) (PostgreSQL)
+* **Data Handling**: [Pandas](https://pandas.pydata.org/)
 
-    Database/Backend: Supabase (PostgreSQL)
-
-    Data Handling: Pandas
 
 ### 💡 今回の改良ポイント（課題への対応）
 
