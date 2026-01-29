@@ -26,15 +26,15 @@ pip install streamlit pandas supabase
 ```
 ### 2. Supabaseの設定（重要）
 
-    Supabaseでプロジェクトを作成します。
+Supabaseでプロジェクトを作成します。
 
-    SQL Editor で以下のテーブルを作成し、RLSをDisableに設定してください。
+SQL Editor で以下のテーブルを作成し、RLSをDisableに設定してください。
 
-        learning_logs (学習履歴用)
+learning_logs (学習履歴用)
 
-        bookmarks (ブックマーク保存用)
+bookmarks (ブックマーク保存用)
 
-    Streamlit Cloudの Secrets に、SUPABASE_URL と SUPABASE_KEY を登録してください。
+Streamlit Cloudの Secrets に、SUPABASE_URL と SUPABASE_KEY を登録してください。
 
 ### 3. アプリの起動
 ```bash
@@ -46,11 +46,11 @@ streamlit run streamlit_app.py
 
 本アプリは、通常のSQLite3等の簡易データベースではなく、外部クラウドデータベースの Supabase (PostgreSQL) を利用しています。
 
-    learning_logs: ユーザーのスコアや学習進捗を保存。
+learning_logs: ユーザーのスコアや学習進捗を保存。
 
-    bookmarks: ブックマークした単語のIDを管理。
+bookmarks: ブックマークした単語のIDを管理。
 
-    英単語データ: 内部のDataFrameで300問の単語を動的に管理。
+英単語データ: 内部のDataFrameで300問の単語を動的に管理。
 
 ###💻 使用技術
 
@@ -61,8 +61,8 @@ streamlit run streamlit_app.py
 
 ### 💡 今回の改良ポイント（課題への対応）
 
-    クラウドDB連携: アプリがスリープしてもデータが消えないようにSupabaseへ書き換えを実施。
+クラウドDB連携: アプリがスリープしてもデータが消えないようにSupabaseへ書き換えを実施。
 
-    セキュリティ対応: APIキーなどの機密情報を st.secrets で安全に管理。
+セキュリティ対応: APIキーなどの機密情報を st.secrets で安全に管理。
 
-    UI/UXの刷新: 記述式から4択選択式へ変更し、学習のハードルを下げ、ブックマーク機能による復習効率を向上させました。
+UI/UXの刷新: 記述式から4択選択式へ変更し、学習のハードルを下げ、ブックマーク機能による復習効率を向上させました。
