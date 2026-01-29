@@ -53,7 +53,7 @@ bookmarks: ブックマークした単語のIDを管理。
 英単語データ: 内部のDataFrameで300問の単語を動的に管理。
 
 
-###　💻 使用技術
+### 💻 使用技術
 
 * **Frontend/UI**: [Streamlit](https://streamlit.io/)
 * **Database/Backend**: [Supabase](https://supabase.com/) (PostgreSQL)
